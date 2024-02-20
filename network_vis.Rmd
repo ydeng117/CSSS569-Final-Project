@@ -1,0 +1,117 @@
+---
+title: "anime_network_vis"
+author: "Yehong Deng"
+date: "2024-02-20"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(sna)
+library(igraph)
+library(sand)
+library(network)
+library(igraphdata)
+library(tidyverse)
+library(splitstackshape)
+library(reshape2)
+library(qdapTools)
+library(tidyr)
+library(blockmodels)
+library(sbm)
+library(tidyverse)
+library(tidygraph)
+library(ggraph)
+library(reshape2)
+library(cluster)
+library(circlize)
+library(ggsankey)
+library(RColorBrewer)
+library(latentnet)
+# To set current folder as your working directory.
+setwd(dirname(rstudioapi::getActiveDocumentContext()$path))
+```
+
+```{r}
+anime_dataset <- read.csv("anime-dataset-2023.csv")
+
+id_genre_list <- anime_dataset %>% select(c(anime_id, Genres))
+
+
+
+temp <- crossprod(
+  as.matrix(
+    cSplit_e(id_genre_list, "Genres", ",", type = "character", 
+             fill = 0, drop = TRUE)[-1]))
+
+temp[upper.tri(temp, diag = TRUE)] <- NA
+
+edge_list_df <- melt(temp, na.rm = TRUE) %>% 
+  filter(value != 0) %>%
+  mutate(from = gsub("Genres_", "", Var1),
+         to = gsub("Genres_", "", Var2),
+         weight = value) %>%
+  select(c("from", "to", "weight"))
+```
+
+
+```{r}
+anime <-graph_from_data_frame(edge_list_df, directed = FALSE)
+l <- layout.kamada.kawai(anime)
+plot(anime,vertex.label = NA,layout=l, vertex.size = 3)
+
+anime_graph <- as_tbl_graph(edge_list_df, directed = FALSE)
+anime_graph <- anime_graph %>%
+  mutate(degree = centrality_degree(),
+    community = group_leading_eigen())
+
+ggraph(anime_graph, layout = "circle") + 
+  geom_node_point(aes(size = degree,
+                      color = factor(community))) +
+  geom_edge_link(alpha = 0.5)
+```
+
+```{r}
+pal <- c("#db5f57", "#db8557", "#dbaa57", "#dbd057", "#c0db57", "#9bdb57", "#75db57", "#57db5f", "#57db85", "#57dbaa", "#57dbd0", "#57c0db", "#579bdb", "#5775db", "#5f57db", "#8557db", "#aa57db", "#d057db", "#db57c0", "#db579b", "#db5775")
+
+genre_sankey <- edge_list_df %>% 
+  ggsankey::make_long(from, to, value = weight)
+
+ggplot(genre_sankey,
+       aes(x = x, next_x = next_x,
+           node = node, next_node = next_node,
+           value = value, fill = node)) +
+  geom_sankey(flow.alpha = 0.6,
+              width = 0.01) +
+  scale_fill_manual(values = pal) +
+  theme_sankey() +
+  labs(x = NULL) +
+  theme(legend.position = "none") +
+  scale_x_discrete(labels = c("Genre_1", "Genre_2")) +
+  geom_sankey_text(data = filter(genre_sankey, x=="from"),
+                   aes(label = paste0(node, "   "), color = node),
+                   hjust = 1
+                   ) +
+  geom_sankey_text(data = filter(genre_sankey, x=="to"),
+                   aes(label = paste0("   ", node), color = node),
+                   hjust = 0
+                   ) +
+  scale_color_manual(values = pal)
+```
+
+
+```{r}
+anime_fit <- ergmm(edge_list_df ~ euclidean(d=2))
+plot(anime_fit)
+```
+
+```{r}
+anime.adj <- as_adj(anime_graph, sparse = FALSE)
+
+anime_out <- BM_poisson("SBM", anime.adj)
+str(anime_out)
+anime_out$estimate()
+#village_out$ICL
+which.max(anime_out$ICL)
+```
+

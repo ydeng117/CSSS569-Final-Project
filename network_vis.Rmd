@@ -28,8 +28,6 @@ library(circlize)
 library(ggsankey)
 library(RColorBrewer)
 library(latentnet)
-# To set current folder as your working directory.
-setwd(dirname(rstudioapi::getActiveDocumentContext()$path))
 ```
 
 ```{r}
@@ -113,5 +111,9 @@ str(anime_out)
 anime_out$estimate()
 #village_out$ICL
 which.max(anime_out$ICL)
+```
+
+```{r}
+anime_fit <- ergmm(edge_list_df ~ euclidean(d=2))
 ```
 

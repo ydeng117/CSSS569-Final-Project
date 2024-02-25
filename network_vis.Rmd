@@ -113,3 +113,7 @@ anime_out$estimate()
 which.max(anime_out$ICL)
 ```
 
+```{r}
+anime_fit <- ergmm(edge_list_df ~ euclidean(d=2))
+```
+

@@ -115,5 +115,9 @@ which.max(anime_out$ICL)
 
 ```{r}
 anime_fit <- ergmm(edge_list_df ~ euclidean(d=2))
+plot(anime_fit)
+```
+
+```{r}
 ```
 

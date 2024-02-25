@@ -28,8 +28,6 @@ library(circlize)
 library(ggsankey)
 library(RColorBrewer)
 library(latentnet)
-# To set current folder as your working directory.
-setwd(dirname(rstudioapi::getActiveDocumentContext()$path))
 ```
 
 ```{r}

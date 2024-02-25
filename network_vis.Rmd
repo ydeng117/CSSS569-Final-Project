@@ -117,3 +117,6 @@ which.max(anime_out$ICL)
 anime_fit <- ergmm(edge_list_df ~ euclidean(d=2))
 ```
 
+```{r}
+## This is Sean
+```

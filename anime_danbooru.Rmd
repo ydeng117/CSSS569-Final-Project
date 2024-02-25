@@ -1,0 +1,153 @@
+---
+title: "danbooru tag poster"
+author: "Yehong Deng"
+date: "2024-02-27"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(tm)
+library(stringr)
+library(sna)
+library(igraph)
+library(sand)
+library(network)
+library(igraphdata)
+library(tidyverse)
+library(splitstackshape)
+library(reshape2)
+library(qdapTools)
+library(tidyr)
+library(blockmodels)
+library(sbm)
+library(tidyverse)
+library(tidygraph)
+library(ggraph)
+library(reshape2)
+library(cluster)
+library(circlize)
+library(ggsankey)
+library(RColorBrewer)
+library(latentnet)
+# To set current folder as your working directory.
+setwd(dirname(rstudioapi::getActiveDocumentContext()$path))
+```
+
+```{r}
+danbooru_in_month <- read.csv("image_in_month.csv")
+
+danbooru_in_hour <- danbooru_in_month %>%
+  filter(created_at <= 3600 + 1264803292)
+
+
+id_tag_list <- danbooru_in_hour %>% 
+  select(id, tags)
+
+
+corpus <- Corpus(VectorSource(id_tag_list$tags))
+corpus <- tm_map(corpus, content_transformer(tolower))
+corpus <- tm_map(corpus, removePunctuation)
+corpus <- tm_map(corpus, removeWords, stopwords("english"))
+
+cleaned_text <- sapply(corpus, function(x) paste(unlist(str_split(x, "\\s+")), collapse = " "))
+
+id_tag_list$tags <- cleaned_text
+```
+
+
+```{r}
+temp <- crossprod(
+  as.matrix(
+    cSplit_e(id_tag_list, "tags", " ", type = "character", 
+             fill = 0, drop = TRUE)[-1]))
+
+temp[upper.tri(temp, diag = TRUE)] <- NA
+
+edge_list_df <- melt(temp, na.rm = TRUE) %>% 
+  filter(value != 0) %>%
+  mutate(from = gsub("tags_", "", Var1),
+         to = gsub("tags_", "", Var2),
+         weight = value) %>%
+  select(c("from", "to", "weight"))
+```
+
+```{r}
+top_100 <- edge_list_df %>%
+  count(from, sort = TRUE) %>% # 对column_name列中的词进行计数并排序
+  top_n(100) %>% # 选出出现次数最多的15个词
+  arrange(desc(n))
+# change top_50 to a list
+top_100_list <- top_100$from
+
+edge_list_df_100 <- edge_list_df %>%
+  filter(from %in% top_100_list) %>%
+  filter(to %in% top_100_list)
+```
+
+```{r}
+anime <-graph_from_data_frame(edge_list_df_100, directed = FALSE)
+l <- layout.kamada.kawai(anime)
+plot(anime,vertex.label = NA,layout=l, vertex.size = 3)
+
+anime_graph <- as_tbl_graph(edge_list_df_100, directed = FALSE)
+anime_graph <- anime_graph %>%
+  mutate(degree = centrality_degree(),
+    community = group_leading_eigen())
+
+
+ggraph(anime_graph, ) + 
+  geom_node_point(aes(size = degree,
+                      color = factor(community))) +
+  geom_edge_link(alpha = 0.5)
+```
+
+```{r}
+anime_fit <- ergmm(edge_list_df_100 ~ euclidean(d=2))
+plot(anime_fit)
+```
+
+```{r}
+anime_fit <- ergmm(edge_list_df_100 ~ euclidean(d=2, G = 3))
+plot(anime_fit)
+```
+
+
+```{r}
+anime.adj <- as_adj(anime_graph, sparse = FALSE)
+
+anime_out <- BM_poisson("SBM", anime.adj)
+str(anime_out)
+anime_out$estimate()
+#village_out$ICL
+which.max(anime_out$ICL)
+
+best_fit_membership_probs <- anime_out$memberships[[which.max(anime_out$ICL)]]$Z
+clust_assignments <- apply(best_fit_membership_probs, 1, which.max)
+plot(anime,
+     vertex.color = clust_assignments,
+     vertex.label = NA,layout=l, vertex.size = 3)
+
+# subgraph of each of the three clusters
+member1 <- which(clust_assignments == 1)
+member2 <- which(clust_assignments == 2)
+member3 <- which(clust_assignments == 3)
+
+
+
+subgraph1 <- induced_subgraph(anime, member1)
+subgraph_2 <- induced_subgraph(anime, member2)
+subgraph_3 <- induced_subgraph(anime, member3)
+# plot the subgraphs
+plot(subgraph1,layout=l, vertex.size = 10 * sqrt(authority.score(anime)$vector))
+plot(subgraph_2,layout=l, vertex.size = 10 * sqrt(authority.score(anime)$vector))
+plot(subgraph_3,layout=l, vertex.size = 3)
+```
+
+
+
+
+
+
+
+

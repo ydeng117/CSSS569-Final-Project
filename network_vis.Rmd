@@ -122,3 +122,6 @@ plot(anime_fit)
 anime.adj <- as_adj(anime_graph, sparse = FALSE)
 ```
 
+```{r}
+## This is Sean
+```

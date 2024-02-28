@@ -96,25 +96,30 @@ plot(anime,vertex.label = NA,layout=l, vertex.size = 3)
 
 
 ```{r}
+# extraxt the adjacency matrix
 anime.adj <- as_adj(anime_graph, sparse = FALSE)
 
+# fit the block model
 anime_out <- BM_poisson("SBM", anime.adj)
 str(anime_out)
 anime_out$estimate()
 
+# find the best fit number of clusters 
 which.max(anime_out$ICL)
 
+# extract the best fit membership probabilities
 best_fit_membership_probs <- anime_out$memberships[[which.max(anime_out$ICL)]]$Z
 clust_assignments <- apply(best_fit_membership_probs, 1, which.max)
 
+# clust assignments
 plot(anime,
      vertex.color = clust_assignments,
      vertex.label = NA,layout=l, vertex.size = 3)
 
-
+# add the cluster assignments to the graph
 V(anime)$membership <- clust_assignments 
-# subgraph of each of the three clusters
 
+# subgraph of each of the three clusters
 subgraph_1 <- induced_subgraph(anime, V(anime)[membership == 1])
 subgraph_2 <- induced_subgraph(anime, V(anime)[membership == 2])
 subgraph_3 <- induced_subgraph(anime, V(anime)[membership == 3])
@@ -129,6 +134,7 @@ plot(subgraph_3, vertex.size = 10 * sqrt(authority.score(anime)$vector), layout=
 
 
 ```{r}
+# extract vertices names from the subgraphs
 member_1 <- V(subgraph_1)$name
 member_2 <- V(subgraph_2)$name
 member_3 <- V(subgraph_3)$name
@@ -198,7 +204,7 @@ sub_edge_list_3 <- edge_list_df_100 %>%
 
 
 ```{r}
-## Create 3 sub dataframes for 3 subgraphs
+## Create 3 sankey dataframes for 3 subgraphs
 sub_1_sankey <- sub_edge_list_1 %>%
   ggsankey::make_long(from, to, value = weight)
 

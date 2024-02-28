@@ -37,28 +37,31 @@ setwd(dirname(rstudioapi::getActiveDocumentContext()$path))
 ```
 
 ```{r}
+# Read the data
 danbooru_in_month <- read.csv("image_in_month.csv")
 
+# filter the data to only include the data in the last hour
 danbooru_in_hour <- danbooru_in_month %>%
   filter(created_at <= 3600 + 1264803292)
 
-
+# clean the tags
 id_tag_list <- danbooru_in_hour %>% 
   select(id, tags)
 
-
+# clean the tags remove the punctuation and stopwords
 corpus <- Corpus(VectorSource(id_tag_list$tags))
 corpus <- tm_map(corpus, content_transformer(tolower))
 corpus <- tm_map(corpus, removePunctuation)
 corpus <- tm_map(corpus, removeWords, stopwords("english"))
 
+# assign the cleaned text back to the dataframe
 cleaned_text <- sapply(corpus, function(x) paste(unlist(str_split(x, "\\s+")), collapse = " "))
-
 id_tag_list$tags <- cleaned_text
 ```
 
 
 ```{r}
+# create occurances matrix
 temp <- crossprod(
   as.matrix(
     cSplit_e(id_tag_list, "tags", " ", type = "character", 
@@ -66,6 +69,7 @@ temp <- crossprod(
 
 temp[upper.tri(temp, diag = TRUE)] <- NA
 
+# create edge list
 edge_list_df <- melt(temp, na.rm = TRUE) %>% 
   filter(value != 0) %>%
   mutate(from = gsub("tags_", "", Var1),
@@ -75,6 +79,7 @@ edge_list_df <- melt(temp, na.rm = TRUE) %>%
 ```
 
 ```{r}
+# filter the edge list to only include the top 100 most frequent tags
 top_100 <- edge_list_df %>%
   count(from, sort = TRUE) %>% # 对column_name列中的词进行计数并排序
   top_n(100) %>% # 选出出现次数最多的15个词
@@ -88,6 +93,7 @@ edge_list_df_100 <- edge_list_df %>%
 ```
 
 ```{r}
+# create the graph for network analysis
 anime <-graph_from_data_frame(edge_list_df_100, directed = FALSE)
 l <- layout.kamada.kawai(anime)
 

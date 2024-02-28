@@ -3,6 +3,8 @@ title: "anime_network_vis"
 author: "Yehong Deng"
 date: "2024-02-20"
 output: pdf_document
+editor_options: 
+  chunk_output_type: console
 ---
 
 ```{r setup, include=FALSE}
@@ -88,11 +90,13 @@ ggplot(genre_sankey,
   scale_x_discrete(labels = c("Genre_1", "Genre_2")) +
   geom_sankey_text(data = filter(genre_sankey, x=="from"),
                    aes(label = paste0(node, "   "), color = node),
-                   hjust = 1
+                   hjust = 1,
+                   size = 1.5
                    ) +
   geom_sankey_text(data = filter(genre_sankey, x=="to"),
                    aes(label = paste0("   ", node), color = node),
-                   hjust = 0
+                   hjust = 0,
+                   size = 1.5
                    ) +
   scale_color_manual(values = pal)
 ```

@@ -3,6 +3,8 @@ title: "danbooru tag poster"
 author: "Yehong Deng"
 date: "2024-02-27"
 output: pdf_document
+editor_options: 
+  chunk_output_type: console
 ---
 
 ```{r setup, include=FALSE}
@@ -117,6 +119,7 @@ subgraph_1 <- induced_subgraph(anime, V(anime)[membership == 1])
 subgraph_2 <- induced_subgraph(anime, V(anime)[membership == 2])
 subgraph_3 <- induced_subgraph(anime, V(anime)[membership == 3])
 
+
 # plot the subgraphs
 plot(subgraph_1, vertex.size = 10 * sqrt(authority.score(anime)$vector), layout=layout.kamada.kawai)
 plot(subgraph_2, vertex.size = 10 * sqrt(authority.score(anime)$vector), layout=layout.kamada.kawai)
@@ -151,10 +154,217 @@ sub_edge_list_1 <- edge_list_df_100 %>%
 #   geom_node_point(aes(size = degree,
 #                       color = factor(community))) +
 #   geom_edge_link(alpha = 0.5)
+
+
+subgraph_1 <- induced_subgraph(anime, member1)
+subgraph_2 <- induced_subgraph(anime, member2)
+subgraph_3 <- induced_subgraph(anime, member3)
+# plot the subgraphs
+plot(subgraph1,layout=l, vertex.size = 10 * sqrt(authority.score(anime)$vector))
+
+plot(subgraph_2,layout=layout.kamada.kawai, vertex.size = 10 * sqrt(authority.score(anime)$vector))
+
+plot(subgraph_3,layout=l, vertex.size = 3)
+```
+
+
+```{r}
+## setting the pal
+pal <- c("#db5f57", "#db8557", "#dbaa57", "#dbd057", "#c0db57", "#9bdb57", "#75db57", "#57db5f", "#57db85", "#57dbaa", "#57dbd0", "#57c0db", "#579bdb", "#5775db", "#5f57db", "#8557db", "#aa57db", "#d057db", "#db57c0", "#db579b", "#db5775")
+```
+
+
+```{r}
+# Extract 3 node lists
+member_1 <- V(subgraph_1)$name
+member_2 <- V(subgraph_2)$name
+member_3 <- V(subgraph_3)$name
+```
+
+```{r}
+# Create 3 edge lists for 3 subgraphs
+sub_edge_list_1 <- edge_list_df_100 %>%
+  filter(from %in% member_1) %>%
+  filter(to %in% member_1)
+
+sub_edge_list_2 <- edge_list_df_100 %>%
+  filter(from %in% member_2) %>%
+  filter(to %in% member_2)
+
+sub_edge_list_3 <- edge_list_df_100 %>%
+  filter(from %in% member_3) %>%
+  filter(to %in% member_3)
+```
+
+
+```{r}
+## Create 3 sub dataframes for 3 subgraphs
+sub_1_sankey <- sub_edge_list_1 %>%
+  ggsankey::make_long(from, to, value = weight)
+
+sub_2_sankey <- sub_edge_list_2 %>%
+  ggsankey::make_long(from, to, value = weight)
+
+sub_3_sankey <- sub_edge_list_3 %>%
+  ggsankey::make_long(from, to, value = weight)
 ```
 
 
 
 
+```{r}
+## Do sankey for subgraph 1
+ggplot(
+  sub_1_sankey,
+  aes(
+    x = x,
+    next_x = next_x,
+    node = node,
+    next_node = next_node,
+    value = value,
+    fill = node
+  )
+) +
+  geom_sankey(flow.alpha = 0.6,
+              width = 0.01) +
+  
+  theme_sankey() +
+  labs(x = NULL) +
+  theme(legend.position = "none") +
+  scale_x_discrete(labels = c("Genre_1", "Genre_2")) +
+  geom_sankey_text(
+    data = filter(sub_1_sankey, x == "from"),
+    aes(label = paste0(node, "   "), color = node),
+    hjust = 1
+  ) +
+  geom_sankey_text(
+    data = filter(sub_1_sankey, x== "to"),
+    aes(label = paste0("   ", node), color = next_node),
+    hjust = 0
+  )
 
 
+
+
+
+## Do sankey for subgraph 2
+ggplot(
+  sub_2_sankey,
+  aes(
+    x = x,
+    next_x = next_x,
+    node = node,
+    next_node = next_node,
+    value = value,
+    fill = node
+  )
+) +
+  geom_sankey(flow.alpha = 0.6,
+              width = 0.01) +
+  scale_fill_manual(values = pal) +
+  theme_sankey() +
+  labs(x = NULL) +
+  theme(legend.position = "none") +
+  scale_x_discrete(labels = c("Genre_1", "Genre_2")) +
+  geom_sankey_text(
+    data = filter(sub_2_sankey, x == "from"),
+    aes(label = paste0(node, "   "), color = node),
+    hjust = 1
+  ) +
+  geom_sankey_text(
+    data = filter(sub_2_sankey, x == "to"),
+    aes(label = paste0("   ", node), color = node),
+    hjust = 0
+  ) 
+
+
+
+## Archive for a success version
+  # ggplot(
+  #   Danbooru_sankey,
+  #   aes(
+  #     x = x,
+  #     next_x = next_x,
+  #     node = node,
+  #     next_node = next_node,
+  #     value = value,
+  #     fill = node
+  #   )
+  # ) +
+  # geom_sankey(flow.alpha = 0.6,
+  #             width = 0.01) +
+  # scale_fill_manual(values = pal) +
+  # theme_sankey() +
+  # labs(x = NULL) +
+  # theme(legend.position = "none") +
+  # scale_x_discrete(labels = c("Genre_1", "Genre_2")) +
+  # geom_sankey_text(
+  #   data = filter(Danbooru_sankey, x == "from"),
+  #   aes(label = paste0(node, "   "), color = node),
+  #   hjust = 1
+  # ) +
+  # geom_sankey_text(
+  #   data = filter(Danbooru_sankey, x == "to"),
+  #   aes(label = paste0("   ", node), color = node),
+  #   hjust = 0
+  # ) +
+  # scale_color_manual(values = pal)
+ 
+
+## Do sankey for subgraph 3
+ggplot(
+  sub_3_sankey,
+  aes(
+    x = x,
+    next_x = next_x,
+    node = node,
+    next_node = next_node,
+    value = value,
+    fill = node
+  )
+) +
+  geom_sankey(flow.alpha = 0.6,
+              width = 0.01) +
+  scale_fill_manual(values = pal) +
+  theme_sankey() +
+  labs(x = NULL) +
+  theme(legend.position = "none") +
+  scale_x_discrete(labels = c("Genre_1", "Genre_2")) +
+  geom_sankey_text(
+    data = filter(sub_3_sankey, x == "from"),
+    aes(label = paste0(node, "   "), color = node),
+    hjust = 1
+  ) +
+  geom_sankey_text(
+    data = filter(sub_3_sankey, x == "to"),
+    aes(label = paste0("   ", node), color = node),
+    hjust = 0
+  ) 
+
+
+```
+
+
+```{r}
+# Since the sankey plot is not very informative, we can use the chord diagram to visualize the relationship for subgraph1
+# Use the chorddiag package to visualize the relationship between the genres
+
+
+chord_Sub_1 <- sub_edge_list_1 %>%
+  group_by(from, to) %>%
+  summarize(flowTotal = sum(weight, na.rm = TRUE)) %>%
+  ungroup() 
+
+chordDiagram(chord_Sub_1)
+
+
+# Do the same to subgraph 2
+chord_Sub_2 <- sub_edge_list_2 %>%
+  # filter out the tagme tag
+  filter(!from %in% "tagme",!to %in% "tagme") %>%
+  group_by(from, to) %>%
+  summarize(flowTotal = sum(weight, na.rm = TRUE)) %>%
+  ungroup() 
+
+chordDiagram(chord_Sub_2)
+```

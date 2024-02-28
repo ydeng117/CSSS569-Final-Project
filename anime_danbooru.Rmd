@@ -42,8 +42,14 @@ danbooru_in_month <- read.csv("image_in_month.csv")
 
 # filter the data to only include the data in the last hour
 danbooru_in_hour <- danbooru_in_month %>%
-  filter(created_at <= 3600 + 1264803292)
+  filter(created_at <= 3600 + 1264803292) 
 
+#filter the top 1000 score images
+danbooru_top_rating <- danbooru_in_month %>%
+  top_n(1000, score)
+```
+
+```{r}
 # clean the tags
 id_tag_list <- danbooru_in_hour %>% 
   select(id, tags)
@@ -58,6 +64,21 @@ corpus <- tm_map(corpus, removeWords, stopwords("english"))
 cleaned_text <- sapply(corpus, function(x) paste(unlist(str_split(x, "\\s+")), collapse = " "))
 id_tag_list$tags <- cleaned_text
 ```
+
+```{r}
+# text clean for the top 1000 score images
+id_tag_list_top <- danbooru_top_rating %>% 
+  select(id, tags)
+
+corpus_top <- Corpus(VectorSource(id_tag_list_top$tags))
+corpus_top <- tm_map(corpus_top, content_transformer(tolower))
+corpus_top <- tm_map(corpus_top, removePunctuation)
+corpus_top <- tm_map(corpus_top, removeWords, stopwords("english"))
+
+cleaned_text_top <- sapply(corpus_top, function(x) paste(unlist(str_split(x, "\\s+")), collapse = " "))
+id_tag_list_top$tags <- cleaned_text_top
+```
+
 
 
 ```{r}
@@ -79,6 +100,26 @@ edge_list_df <- melt(temp, na.rm = TRUE) %>%
 ```
 
 ```{r}
+# create co-occurrence matrix for the top 1000 score images
+temp_top <- crossprod(
+  as.matrix(
+    cSplit_e(id_tag_list_top, "tags", " ", type = "character", 
+             fill = 0, drop = TRUE)[-1]))
+
+temp_top[upper.tri(temp_top, diag = TRUE)] <- NA
+
+# create edge list for the top 1000 score images
+edge_list_df_top <- melt(temp_top, na.rm = TRUE) %>% 
+  filter(value != 0) %>%
+  mutate(from = gsub("tags_", "", Var1),
+         to = gsub("tags_", "", Var2),
+         weight = value) %>%
+  select(c("from", "to", "weight"))
+```
+
+
+
+```{r}
 # filter the edge list to only include the top 100 most frequent tags
 top_100 <- edge_list_df %>%
   count(from, sort = TRUE) %>% # 对column_name列中的词进行计数并排序
@@ -93,6 +134,20 @@ edge_list_df_100 <- edge_list_df %>%
 ```
 
 ```{r}
+# filter the edge list to only include the top 100 most frequent tags for the top 1000 score images
+top_100_top <- edge_list_df_top %>%
+  count(from, sort = TRUE) %>% # 对column_name列中的词进行计数并排序
+  top_n(100) %>% # 选出出现次数最多的15个词
+  arrange(desc(n))
+
+edge_list_df_100_top <- edge_list_df_top %>%
+  filter(from %in% top_100_list) %>%
+  filter(to %in% top_100_list)
+
+```
+
+
+```{r}
 # create the graph for network analysis
 anime <-graph_from_data_frame(edge_list_df_100, directed = FALSE)
 l <- layout.kamada.kawai(anime)
@@ -100,10 +155,17 @@ l <- layout.kamada.kawai(anime)
 plot(anime,vertex.label = NA,layout=l, vertex.size = 3)
 ```
 
+```{r}
+# create the graph for network analysis for the top 1000 score images
+anime_top <-graph_from_data_frame(edge_list_df_100_top, directed = FALSE)
+plot(anime_top,vertex.label = NA,layout=layout.fruchterman.reingold, vertex.size = 3)
+```
+
 
 ```{r}
-# extraxt the adjacency matrix
-anime.adj <- as_adj(anime_graph, sparse = FALSE)
+# SBM model for clustering
+## extraxt the adjacency matrix
+anime.adj <- as_adj(anime, sparse = FALSE)
 
 # fit the block model
 anime_out <- BM_poisson("SBM", anime.adj)
@@ -138,46 +200,46 @@ plot(subgraph_3, vertex.size = 10 * sqrt(authority.score(anime)$vector), layout=
 
 ```
 
-
 ```{r}
-# extract vertices names from the subgraphs
-member_1 <- V(subgraph_1)$name
-member_2 <- V(subgraph_2)$name
-member_3 <- V(subgraph_3)$name
+# SBM model for clustering for the top 1000 score images
+## extraxt the adjacency matrix
+anime_top.adj <- as_adj(anime_top, sparse = FALSE)
+
+# fit the block model
+anime_top_out <- BM_poisson("SBM", anime_top.adj)
+str(anime_top_out)
+anime_top_out$estimate()
+
+# find the best fit number of clusters
+which.max(anime_top_out$ICL)
+
+# extract the best fit membership probabilities
+best_fit_membership_probs_top <- anime_top_out$memberships[[which.max(anime_top_out$ICL)]]$Z
+clust_assignments_top <- apply(best_fit_membership_probs_top, 1, which.max)
+
+# clust assignments
+plot(anime_top,
+     vertex.color = clust_assignments_top,
+     vertex.label = NA,layout=layout.fruchterman.reingold, vertex.size = 3)
+
+# add the cluster assignments to the graph
+V(anime_top)$membership <- clust_assignments_top
+
+# subgraph of each of the three clusters
+subgraph_1_top <- induced_subgraph(anime_top, V(anime_top)[membership == 1])
+subgraph_2_top <- induced_subgraph(anime_top, V(anime_top)[membership == 2])
+subgraph_3_top <- induced_subgraph(anime_top, V(anime_top)[membership == 3])
+subgraph_4_top <- induced_subgraph(anime_top, V(anime_top)[membership == 4])
+
+#plot the subgraphs
+plot(subgraph_1_top, vertex.size = 10 * sqrt(authority.score(anime_top)$vector), layout=layout.fruchterman.reingold)
+plot(subgraph_2_top, vertex.size = 10 * sqrt(authority.score(anime_top)$vector), layout=layout.fruchterman.reingold)
+plot(subgraph_3_top, vertex.size = 10 * sqrt(authority.score(anime_top)$vector), layout=layout.fruchterman.reingold)
+plot(subgraph_4_top, vertex.size = 10 * sqrt(authority.score(anime_top)$vector), layout=layout.fruchterman.reingold)
+
+
 ```
 
-```{r}
-sub_edge_list_1 <- edge_list_df_100 %>%
-  filter(from %in% member_1) %>%
-  filter(to %in% member_1)
-```
-
-
-
-
-```{r}
-# anime_graph <- as_tbl_graph(edge_list_df_100, directed = FALSE)
-# anime_graph <- anime_graph %>%
-#   mutate(degree = centrality_degree(),
-#     community = group_leading_eigen())
-# 
-# 
-# ggraph(anime_graph, ) + 
-#   geom_node_point(aes(size = degree,
-#                       color = factor(community))) +
-#   geom_edge_link(alpha = 0.5)
-
-
-subgraph_1 <- induced_subgraph(anime, member1)
-subgraph_2 <- induced_subgraph(anime, member2)
-subgraph_3 <- induced_subgraph(anime, member3)
-# plot the subgraphs
-plot(subgraph1,layout=l, vertex.size = 10 * sqrt(authority.score(anime)$vector))
-
-plot(subgraph_2,layout=layout.kamada.kawai, vertex.size = 10 * sqrt(authority.score(anime)$vector))
-
-plot(subgraph_3,layout=l, vertex.size = 3)
-```
 
 
 ```{r}
@@ -194,7 +256,16 @@ member_3 <- V(subgraph_3)$name
 ```
 
 ```{r}
-# Create 3 edge lists for 3 subgraphs
+# extract node lists for the top 1000 score images
+member_1_top <- V(subgraph_1_top)$name
+member_2_top <- V(subgraph_2_top)$name
+member_3_top <- V(subgraph_3_top)$name
+member_4_top <- V(subgraph_4_top)$name
+```
+
+
+```{r}
+#Create 3 edge lists for 3 subgraphs
 sub_edge_list_1 <- edge_list_df_100 %>%
   filter(from %in% member_1) %>%
   filter(to %in% member_1)
@@ -207,10 +278,27 @@ sub_edge_list_3 <- edge_list_df_100 %>%
   filter(from %in% member_3) %>%
   filter(to %in% member_3)
 ```
+ 
+```{r}
+#Create 3 edge lists for 3 subgraphs for the top 1000 score images
+sub_edge_list_1_top <- edge_list_df_100_top %>%
+  filter(from %in% member_1_top) %>%
+  filter(to %in% member_1_top)
+
+sub_edge_list_2_top <- edge_list_df_100_top %>%
+  filter(from %in% member_2_top) %>%
+  filter(to %in% member_2_top)
+
+sub_edge_list_3_top <- edge_list_df_100_top %>%
+  filter(from %in% member_3_top) %>%
+  filter(to %in% member_3_top)
+
+```
+
 
 
 ```{r}
-## Create 3 sankey dataframes for 3 subgraphs
+# Create 3 sankey dataframes for 3 subgraphs
 sub_1_sankey <- sub_edge_list_1 %>%
   ggsankey::make_long(from, to, value = weight)
 
@@ -220,40 +308,52 @@ sub_2_sankey <- sub_edge_list_2 %>%
 sub_3_sankey <- sub_edge_list_3 %>%
   ggsankey::make_long(from, to, value = weight)
 ```
-
-
-
-
+ 
 ```{r}
-## Do sankey for subgraph 1
-ggplot(
-  sub_1_sankey,
-  aes(
-    x = x,
-    next_x = next_x,
-    node = node,
-    next_node = next_node,
-    value = value,
-    fill = node
-  )
-) +
-  geom_sankey(flow.alpha = 0.6,
-              width = 0.01) +
-  
-  theme_sankey() +
-  labs(x = NULL) +
-  theme(legend.position = "none") +
-  scale_x_discrete(labels = c("Genre_1", "Genre_2")) +
-  geom_sankey_text(
-    data = filter(sub_1_sankey, x == "from"),
-    aes(label = paste0(node, "   "), color = node),
-    hjust = 1
-  ) +
-  geom_sankey_text(
-    data = filter(sub_1_sankey, x== "to"),
-    aes(label = paste0("   ", node), color = next_node),
-    hjust = 0
-  )
+# Create 3 sankey dataframes for 3 subgraphs for the top 1000 score images
+sub_1_sankey_top <- sub_edge_list_1_top %>%
+  ggsankey::make_long(from, to, value = weight)
+
+sub_2_sankey_top <- sub_edge_list_2_top %>%
+  ggsankey::make_long(from, to, value = weight)
+
+sub_3_sankey_top <- sub_edge_list_3_top %>%
+  ggsankey::make_long(from, to, value = weight)
+```
+
+
+ 
+ 
+```{r}
+# ## Do sankey for subgraph 1
+# ggplot(
+#   sub_1_sankey,
+#   aes(
+#     x = x,
+#     next_x = next_x,
+#     node = node,
+#     next_node = next_node,
+#     value = value,
+#     fill = node
+#   )
+# ) +
+#   geom_sankey(flow.alpha = 0.6,
+#               width = 0.01) +
+#   
+#   theme_sankey() +
+#   labs(x = NULL) +
+#   theme(legend.position = "none") +
+#   scale_x_discrete(labels = c("Genre_1", "Genre_2")) +
+#   geom_sankey_text(
+#     data = filter(sub_1_sankey, x == "from"),
+#     aes(label = paste0(node, "   "), color = node),
+#     hjust = 1
+#   ) +
+#   geom_sankey_text(
+#     data = filter(sub_1_sankey, x== "to"),
+#     aes(label = paste0("   ", node), color = next_node),
+#     hjust = 0
+#   )
 
 
 
@@ -358,16 +458,48 @@ ggplot(
 
 
 ```{r}
-# Since the sankey plot is not very informative, we can use the chord diagram to visualize the relationship for subgraph1
-# Use the chorddiag package to visualize the relationship between the genres
+## Do sankey for subgraph 2
+ggplot(
+  sub_3_sankey_top,
+  aes(
+    x = x,
+    next_x = next_x,
+    node = node,
+    next_node = next_node,
+    value = value,
+    fill = node
+  )
+) +
+  geom_sankey(flow.alpha = 0.6,
+              width = 0.01) +
+  theme_sankey() +
+  labs(x = NULL) +
+  theme(legend.position = "none") +
+  scale_x_discrete(labels = c("Genre_1", "Genre_2")) +
+  geom_sankey_text(
+    data = filter(sub_3_sankey_top, x == "from"),
+    aes(label = paste0(node, "   "), color = node),
+    hjust = 1
+  ) +
+  geom_sankey_text(
+    data = filter(sub_3_sankey_top, x == "to"),
+    aes(label = paste0("   ", node), color = node),
+    hjust = 0
+  ) 
+```
 
 
-chord_Sub_1 <- sub_edge_list_1 %>%
-  group_by(from, to) %>%
-  summarize(flowTotal = sum(weight, na.rm = TRUE)) %>%
-  ungroup() 
-
-chordDiagram(chord_Sub_1)
+```{r}
+# # Since the sankey plot is not very informative, we can use the chord diagram to visualize the relationship for subgraph1
+# # Use the chorddiag package to visualize the relationship between the genres
+# 
+# 
+# chord_Sub_1 <- sub_edge_list_1 %>%
+#   group_by(from, to) %>%
+#   summarize(flowTotal = sum(weight, na.rm = TRUE)) %>%
+#   ungroup() 
+# 
+# chordDiagram(chord_Sub_1)
 
 
 # Do the same to subgraph 2

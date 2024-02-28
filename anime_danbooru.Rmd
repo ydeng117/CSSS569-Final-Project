@@ -88,28 +88,8 @@ edge_list_df_100 <- edge_list_df %>%
 ```{r}
 anime <-graph_from_data_frame(edge_list_df_100, directed = FALSE)
 l <- layout.kamada.kawai(anime)
+
 plot(anime,vertex.label = NA,layout=l, vertex.size = 3)
-
-anime_graph <- as_tbl_graph(edge_list_df_100, directed = FALSE)
-anime_graph <- anime_graph %>%
-  mutate(degree = centrality_degree(),
-    community = group_leading_eigen())
-
-
-ggraph(anime_graph, ) + 
-  geom_node_point(aes(size = degree,
-                      color = factor(community))) +
-  geom_edge_link(alpha = 0.5)
-```
-
-```{r}
-anime_fit <- ergmm(edge_list_df_100 ~ euclidean(d=2))
-plot(anime_fit)
-```
-
-```{r}
-anime_fit <- ergmm(edge_list_df_100 ~ euclidean(d=2, G = 3))
-plot(anime_fit)
 ```
 
 
@@ -119,32 +99,59 @@ anime.adj <- as_adj(anime_graph, sparse = FALSE)
 anime_out <- BM_poisson("SBM", anime.adj)
 str(anime_out)
 anime_out$estimate()
-#village_out$ICL
+
 which.max(anime_out$ICL)
 
 best_fit_membership_probs <- anime_out$memberships[[which.max(anime_out$ICL)]]$Z
 clust_assignments <- apply(best_fit_membership_probs, 1, which.max)
+
 plot(anime,
      vertex.color = clust_assignments,
      vertex.label = NA,layout=l, vertex.size = 3)
 
+
+V(anime)$membership <- clust_assignments 
 # subgraph of each of the three clusters
-member1 <- which(clust_assignments == 1)
-member2 <- which(clust_assignments == 2)
-member3 <- which(clust_assignments == 3)
 
+subgraph_1 <- induced_subgraph(anime, V(anime)[membership == 1])
+subgraph_2 <- induced_subgraph(anime, V(anime)[membership == 2])
+subgraph_3 <- induced_subgraph(anime, V(anime)[membership == 3])
 
-
-subgraph1 <- induced_subgraph(anime, member1)
-subgraph_2 <- induced_subgraph(anime, member2)
-subgraph_3 <- induced_subgraph(anime, member3)
 # plot the subgraphs
-plot(subgraph1,layout=l, vertex.size = 10 * sqrt(authority.score(anime)$vector))
-plot(subgraph_2,layout=l, vertex.size = 10 * sqrt(authority.score(anime)$vector))
-plot(subgraph_3,layout=l, vertex.size = 3)
+plot(subgraph_1, vertex.size = 10 * sqrt(authority.score(anime)$vector), layout=layout.kamada.kawai)
+plot(subgraph_2, vertex.size = 10 * sqrt(authority.score(anime)$vector), layout=layout.kamada.kawai)
+plot(subgraph_3, vertex.size = 10 * sqrt(authority.score(anime)$vector), layout=layout.kamada.kawai)
+
 ```
 
 
+```{r}
+member_1 <- V(subgraph_1)$name
+member_2 <- V(subgraph_2)$name
+member_3 <- V(subgraph_3)$name
+```
+
+```{r}
+sub_edge_list_1 <- edge_list_df_100 %>%
+  filter(from %in% member_1) %>%
+  filter(to %in% member_1)
+```
+
+
+
+
+```{r}
+# anime_graph <- as_tbl_graph(edge_list_df_100, directed = FALSE)
+# anime_graph <- anime_graph %>%
+#   mutate(degree = centrality_degree(),
+#     community = group_leading_eigen())
+# 
+# 
+# ggraph(anime_graph, ) + 
+#   geom_node_point(aes(size = degree,
+#                       color = factor(community))) +
+#   geom_edge_link(alpha = 0.5)
+```
 
 
 

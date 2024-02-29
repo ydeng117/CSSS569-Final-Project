@@ -274,7 +274,7 @@ plot(
   anime_top,
   vertex.color = clust_assignments_top,
   vertex.label = NA,
-  layout = layout.fruchterman.reingold,
+  layout = layout_nicely,
   vertex.size = 3,
   #edge.width = sqrt(E(anime_top)$weight),
   #make the edge transparent
@@ -695,7 +695,7 @@ ggplot(
 
 
 # Do the same to subgraph 2
-chord_Sub_2 <- sub_edge_list_2 %>%
+chord_Sub_2 <- sub_edge_list_2_top %>%
   # filter out the tagme tag
   filter(!from %in% "tagme", !to %in% "tagme") %>%
   group_by(from, to) %>%

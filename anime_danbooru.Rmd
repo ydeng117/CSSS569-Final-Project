@@ -423,7 +423,7 @@ sub_3_sankey <- sub_edge_list_3 %>%
 ```
  
 ```{r}
-# Create 3 sankey dataframes for 3 subgraphs for the top 1000 score images
+# Create 5 sankey dataframes for 5 subgraphs for the top 1000 score images
 sub_1_sankey_top <- sub_edge_list_1_top %>%
   ggsankey::make_long(from, to, value = weight)
 
@@ -577,8 +577,10 @@ ggplot(
 ```
 
 
+## Sankey for the top 1000 score images
+
 ```{r}
-## Do sankey for subgraph 1_top
+## Do sankey for subgraph 5_top
 ggplot(
   sub_5_sankey_top,
   aes(
@@ -608,6 +610,71 @@ ggplot(
   ) 
 ```
 
+```{r}
+## Do sankey for subgraph 1 top
+ggplot(
+  sub_1_sankey_top,
+  aes(
+    x = x,
+    next_x = next_x,
+    node = node,
+    next_node = next_node,
+    value = value,
+    fill = node
+  )
+) +
+  geom_sankey(flow.alpha = 0.6,
+              width = 0.01) +
+  theme_sankey() +
+  labs(x = NULL) +
+  theme(legend.position = "none") +
+  scale_x_discrete(labels = c("Genre_1", "Genre_2")) +
+  geom_sankey_text(
+    data = filter(sub_1_sankey_top, x == "from"),
+    aes(label = paste0(node, "   "), color = node),
+    hjust = 1
+  ) +
+  geom_sankey_text(
+    data = filter(sub_1_sankey_top, x == "to"),
+    aes(label = paste0("   ", node), color = node),
+    hjust = 0
+  ) 
+
+```
+
+```{r}
+## Do sankey for subgraph 2 top
+ggplot(
+  sub_2_sankey_top,
+  aes(
+    x = x,
+    next_x = next_x,
+    node = node,
+    next_node = next_node,
+    value = value,
+    fill = node
+  )
+) +
+  geom_sankey(flow.alpha = 0.6,
+              width = 0.01) +
+  theme_sankey() +
+  labs(x = NULL) +
+  theme(legend.position = "none") +
+  scale_x_discrete(labels = c("Genre_1", "Genre_2")) +
+  geom_sankey_text(
+    data = filter(sub_2_sankey_top, x == "from"),
+    aes(label = paste0(node, "   "), color = node),
+    hjust = 1
+  ) +
+  geom_sankey_text(
+    data = filter(sub_2_sankey_top, x == "to"),
+    aes(label = paste0("   ", node), color = node),
+    hjust = 0
+  ) 
+```
+
+```{r}
+```
 
 
 

@@ -489,6 +489,8 @@ ggplot(
 ```
 
 
+
+
 ```{r}
 # # Since the sankey plot is not very informative, we can use the chord diagram to visualize the relationship for subgraph1
 # # Use the chorddiag package to visualize the relationship between the genres
@@ -512,3 +514,12 @@ chord_Sub_2 <- sub_edge_list_2 %>%
 
 chordDiagram(chord_Sub_2)
 ```
+
+
+
+
+
+
+
+
+

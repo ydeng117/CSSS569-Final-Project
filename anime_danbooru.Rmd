@@ -275,7 +275,10 @@ plot(
   vertex.color = clust_assignments_top,
   vertex.label = NA,
   layout = layout.fruchterman.reingold,
-  vertex.size = 3
+  vertex.size = 3,
+  #edge.width = sqrt(E(anime_top)$weight),
+  #make the edge transparent
+  edge.color = adjustcolor("grey", alpha.f = 0.2)
 )
 
 # add the cluster assignments to the graph

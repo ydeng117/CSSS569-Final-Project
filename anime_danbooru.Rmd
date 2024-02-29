@@ -140,9 +140,11 @@ top_100_top <- edge_list_df_top %>%
   top_n(100) %>% # 选出出现次数最多的15个词
   arrange(desc(n))
 
+top_100_list_top <- top_100_top$from
+
 edge_list_df_100_top <- edge_list_df_top %>%
-  filter(from %in% top_100_list) %>%
-  filter(to %in% top_100_list)
+  filter(from %in% top_100_list_top) %>%
+  filter(to %in% top_100_list_top)
 
 ```
 
@@ -230,12 +232,14 @@ subgraph_1_top <- induced_subgraph(anime_top, V(anime_top)[membership == 1])
 subgraph_2_top <- induced_subgraph(anime_top, V(anime_top)[membership == 2])
 subgraph_3_top <- induced_subgraph(anime_top, V(anime_top)[membership == 3])
 subgraph_4_top <- induced_subgraph(anime_top, V(anime_top)[membership == 4])
+subgraph_5_top <- induced_subgraph(anime_top, V(anime_top)[membership == 5])
 
 #plot the subgraphs
 plot(subgraph_1_top, vertex.size = 10 * sqrt(authority.score(anime_top)$vector), layout=layout.fruchterman.reingold)
 plot(subgraph_2_top, vertex.size = 10 * sqrt(authority.score(anime_top)$vector), layout=layout.fruchterman.reingold)
 plot(subgraph_3_top, vertex.size = 10 * sqrt(authority.score(anime_top)$vector), layout=layout.fruchterman.reingold)
 plot(subgraph_4_top, vertex.size = 10 * sqrt(authority.score(anime_top)$vector), layout=layout.fruchterman.reingold)
+plot(subgraph_5_top, vertex.size = 10 * sqrt(authority.score(anime_top)$vector), layout=layout.fruchterman.reingold)
 
 
 ```
@@ -261,6 +265,7 @@ member_1_top <- V(subgraph_1_top)$name
 member_2_top <- V(subgraph_2_top)$name
 member_3_top <- V(subgraph_3_top)$name
 member_4_top <- V(subgraph_4_top)$name
+member_5_top <- V(subgraph_5_top)$name
 ```
 
 
@@ -280,7 +285,7 @@ sub_edge_list_3 <- edge_list_df_100 %>%
 ```
  
 ```{r}
-#Create 3 edge lists for 3 subgraphs for the top 1000 score images
+#Create 5 edge lists for 3 subgraphs for the top 1000 score images
 sub_edge_list_1_top <- edge_list_df_100_top %>%
   filter(from %in% member_1_top) %>%
   filter(to %in% member_1_top)
@@ -293,6 +298,13 @@ sub_edge_list_3_top <- edge_list_df_100_top %>%
   filter(from %in% member_3_top) %>%
   filter(to %in% member_3_top)
 
+sub_edge_list_4_top <- edge_list_df_100_top %>%
+  filter(from %in% member_4_top) %>%
+  filter(to %in% member_4_top)
+
+sub_edge_list_5_top <- edge_list_df_100_top %>%
+  filter(from %in% member_5_top) %>%
+  filter(to %in% member_5_top)
 ```
 
 
@@ -319,6 +331,13 @@ sub_2_sankey_top <- sub_edge_list_2_top %>%
 
 sub_3_sankey_top <- sub_edge_list_3_top %>%
   ggsankey::make_long(from, to, value = weight)
+
+sub_4_sankey_top <- sub_edge_list_4_top %>%
+  ggsankey::make_long(from, to, value = weight)
+
+sub_5_sankey_top <- sub_edge_list_5_top %>%
+  ggsankey::make_long(from, to, value = weight)
+
 ```
 
 
@@ -458,9 +477,9 @@ ggplot(
 
 
 ```{r}
-## Do sankey for subgraph 2
+## Do sankey for subgraph 1_top
 ggplot(
-  sub_3_sankey_top,
+  sub_5_sankey_top,
   aes(
     x = x,
     next_x = next_x,
@@ -477,12 +496,12 @@ ggplot(
   theme(legend.position = "none") +
   scale_x_discrete(labels = c("Genre_1", "Genre_2")) +
   geom_sankey_text(
-    data = filter(sub_3_sankey_top, x == "from"),
+    data = filter(sub_5_sankey_top, x == "from"),
     aes(label = paste0(node, "   "), color = node),
     hjust = 1
   ) +
   geom_sankey_text(
-    data = filter(sub_3_sankey_top, x == "to"),
+    data = filter(sub_5_sankey_top, x == "to"),
     aes(label = paste0("   ", node), color = node),
     hjust = 0
   ) 
@@ -516,6 +535,13 @@ chordDiagram(chord_Sub_2)
 ```
 
 
+```{r}
+anime_fit <- ergmm(edge_list_df_100_top ~ euclidean(d=2,G=3),family = "Poisson")
+plot(anime_fit, pie = TRUE)
+```
+
+```{r})
+```
 
 
 

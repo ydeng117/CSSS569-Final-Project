@@ -42,7 +42,7 @@ danbooru_in_month <- read.csv("image_in_month.csv")
 
 # filter the data to only include the data in the last hour
 danbooru_in_hour <- danbooru_in_month %>%
-  filter(created_at <= 3600 + 1264803292) 
+  filter(created_at <= 3600 + 1264803292)
 
 #filter the top 1000 score images
 danbooru_top_rating <- danbooru_in_month %>%
@@ -51,7 +51,7 @@ danbooru_top_rating <- danbooru_in_month %>%
 
 ```{r}
 # clean the tags
-id_tag_list <- danbooru_in_hour %>% 
+id_tag_list <- danbooru_in_hour %>%
   select(id, tags)
 
 # clean the tags remove the punctuation and stopwords
@@ -61,13 +61,15 @@ corpus <- tm_map(corpus, removePunctuation)
 corpus <- tm_map(corpus, removeWords, stopwords("english"))
 
 # assign the cleaned text back to the dataframe
-cleaned_text <- sapply(corpus, function(x) paste(unlist(str_split(x, "\\s+")), collapse = " "))
+cleaned_text <-
+  sapply(corpus, function(x)
+    paste(unlist(str_split(x, "\\s+")), collapse = " "))
 id_tag_list$tags <- cleaned_text
 ```
 
 ```{r}
 # text clean for the top 1000 score images
-id_tag_list_top <- danbooru_top_rating %>% 
+id_tag_list_top <- danbooru_top_rating %>%
   select(id, tags)
 
 corpus_top <- Corpus(VectorSource(id_tag_list_top$tags))
@@ -75,7 +77,9 @@ corpus_top <- tm_map(corpus_top, content_transformer(tolower))
 corpus_top <- tm_map(corpus_top, removePunctuation)
 corpus_top <- tm_map(corpus_top, removeWords, stopwords("english"))
 
-cleaned_text_top <- sapply(corpus_top, function(x) paste(unlist(str_split(x, "\\s+")), collapse = " "))
+cleaned_text_top <-
+  sapply(corpus_top, function(x)
+    paste(unlist(str_split(x, "\\s+")), collapse = " "))
 id_tag_list_top$tags <- cleaned_text_top
 ```
 
@@ -83,37 +87,53 @@ id_tag_list_top$tags <- cleaned_text_top
 
 ```{r}
 # create occurances matrix
-temp <- crossprod(
-  as.matrix(
-    cSplit_e(id_tag_list, "tags", " ", type = "character", 
-             fill = 0, drop = TRUE)[-1]))
+temp <- crossprod(as.matrix(
+  cSplit_e(
+    id_tag_list,
+    "tags",
+    " ",
+    type = "character",
+    fill = 0,
+    drop = TRUE
+  )[-1]
+))
 
 temp[upper.tri(temp, diag = TRUE)] <- NA
 
 # create edge list
-edge_list_df <- melt(temp, na.rm = TRUE) %>% 
+edge_list_df <- melt(temp, na.rm = TRUE) %>%
   filter(value != 0) %>%
-  mutate(from = gsub("tags_", "", Var1),
-         to = gsub("tags_", "", Var2),
-         weight = value) %>%
+  mutate(
+    from = gsub("tags_", "", Var1),
+    to = gsub("tags_", "", Var2),
+    weight = value
+  ) %>%
   select(c("from", "to", "weight"))
 ```
 
 ```{r}
 # create co-occurrence matrix for the top 1000 score images
-temp_top <- crossprod(
-  as.matrix(
-    cSplit_e(id_tag_list_top, "tags", " ", type = "character", 
-             fill = 0, drop = TRUE)[-1]))
+temp_top <- crossprod(as.matrix(
+  cSplit_e(
+    id_tag_list_top,
+    "tags",
+    " ",
+    type = "character",
+    fill = 0,
+    drop = TRUE
+  )[-1]
+))
 
 temp_top[upper.tri(temp_top, diag = TRUE)] <- NA
 
 # create edge list for the top 1000 score images
-edge_list_df_top <- melt(temp_top, na.rm = TRUE) %>% 
+edge_list_df_top <- melt(temp_top, na.rm = TRUE) %>%
   filter(value != 0) %>%
-  mutate(from = gsub("tags_", "", Var1),
-         to = gsub("tags_", "", Var2),
-         weight = value) %>%
+  mutate(
+    from = gsub("tags_", "", Var1),
+    to = gsub("tags_", "", Var2),
+    weight = value
+  ) %>%
   select(c("from", "to", "weight"))
 ```
 
@@ -151,16 +171,27 @@ edge_list_df_100_top <- edge_list_df_top %>%
 
 ```{r}
 # create the graph for network analysis
-anime <-graph_from_data_frame(edge_list_df_100, directed = FALSE)
+anime <- graph_from_data_frame(edge_list_df_100, directed = FALSE)
 l <- layout.kamada.kawai(anime)
 
-plot(anime,vertex.label = NA,layout=l, vertex.size = 3)
+plot(
+  anime,
+  vertex.label = NA,
+  layout = l,
+  vertex.size = 3
+)
 ```
 
 ```{r}
 # create the graph for network analysis for the top 1000 score images
-anime_top <-graph_from_data_frame(edge_list_df_100_top, directed = FALSE)
-plot(anime_top,vertex.label = NA,layout=layout.fruchterman.reingold, vertex.size = 3)
+anime_top <-
+  graph_from_data_frame(edge_list_df_100_top, directed = FALSE)
+plot(
+  anime_top,
+  vertex.label = NA,
+  layout = layout.fruchterman.reingold,
+  vertex.size = 3
+)
 ```
 
 
@@ -174,20 +205,25 @@ anime_out <- BM_poisson("SBM", anime.adj)
 str(anime_out)
 anime_out$estimate()
 
-# find the best fit number of clusters 
+# find the best fit number of clusters
 which.max(anime_out$ICL)
 
 # extract the best fit membership probabilities
-best_fit_membership_probs <- anime_out$memberships[[which.max(anime_out$ICL)]]$Z
+best_fit_membership_probs <-
+  anime_out$memberships[[which.max(anime_out$ICL)]]$Z
 clust_assignments <- apply(best_fit_membership_probs, 1, which.max)
 
 # clust assignments
-plot(anime,
-     vertex.color = clust_assignments,
-     vertex.label = NA,layout=l, vertex.size = 3)
+plot(
+  anime,
+  vertex.color = clust_assignments,
+  vertex.label = NA,
+  layout = l,
+  vertex.size = 3
+)
 
 # add the cluster assignments to the graph
-V(anime)$membership <- clust_assignments 
+V(anime)$membership <- clust_assignments
 
 # subgraph of each of the three clusters
 subgraph_1 <- induced_subgraph(anime, V(anime)[membership == 1])
@@ -196,9 +232,21 @@ subgraph_3 <- induced_subgraph(anime, V(anime)[membership == 3])
 
 
 # plot the subgraphs
-plot(subgraph_1, vertex.size = 10 * sqrt(authority.score(anime)$vector), layout=layout.kamada.kawai)
-plot(subgraph_2, vertex.size = 10 * sqrt(authority.score(anime)$vector), layout=layout.kamada.kawai)
-plot(subgraph_3, vertex.size = 10 * sqrt(authority.score(anime)$vector), layout=layout.kamada.kawai)
+plot(
+  subgraph_1,
+  vertex.size = 10 * sqrt(authority.score(anime)$vector),
+  layout = layout.kamada.kawai
+)
+plot(
+  subgraph_2,
+  vertex.size = 10 * sqrt(authority.score(anime)$vector),
+  layout = layout.kamada.kawai
+)
+plot(
+  subgraph_3,
+  vertex.size = 10 * sqrt(authority.score(anime)$vector),
+  layout = layout.kamada.kawai
+)
 
 ```
 
@@ -216,31 +264,61 @@ anime_top_out$estimate()
 which.max(anime_top_out$ICL)
 
 # extract the best fit membership probabilities
-best_fit_membership_probs_top <- anime_top_out$memberships[[which.max(anime_top_out$ICL)]]$Z
-clust_assignments_top <- apply(best_fit_membership_probs_top, 1, which.max)
+best_fit_membership_probs_top <-
+  anime_top_out$memberships[[which.max(anime_top_out$ICL)]]$Z
+clust_assignments_top <-
+  apply(best_fit_membership_probs_top, 1, which.max)
 
 # clust assignments
-plot(anime_top,
-     vertex.color = clust_assignments_top,
-     vertex.label = NA,layout=layout.fruchterman.reingold, vertex.size = 3)
+plot(
+  anime_top,
+  vertex.color = clust_assignments_top,
+  vertex.label = NA,
+  layout = layout.fruchterman.reingold,
+  vertex.size = 3
+)
 
 # add the cluster assignments to the graph
 V(anime_top)$membership <- clust_assignments_top
 
 # subgraph of each of the three clusters
-subgraph_1_top <- induced_subgraph(anime_top, V(anime_top)[membership == 1])
-subgraph_2_top <- induced_subgraph(anime_top, V(anime_top)[membership == 2])
-subgraph_3_top <- induced_subgraph(anime_top, V(anime_top)[membership == 3])
-subgraph_4_top <- induced_subgraph(anime_top, V(anime_top)[membership == 4])
-subgraph_5_top <- induced_subgraph(anime_top, V(anime_top)[membership == 5])
+subgraph_1_top <-
+  induced_subgraph(anime_top, V(anime_top)[membership == 1])
+subgraph_2_top <-
+  induced_subgraph(anime_top, V(anime_top)[membership == 2])
+subgraph_3_top <-
+  induced_subgraph(anime_top, V(anime_top)[membership == 3])
+subgraph_4_top <-
+  induced_subgraph(anime_top, V(anime_top)[membership == 4])
+subgraph_5_top <-
+  induced_subgraph(anime_top, V(anime_top)[membership == 5])
 
 #plot the subgraphs
-plot(subgraph_1_top, vertex.size = 10 * sqrt(authority.score(anime_top)$vector), layout=layout.fruchterman.reingold)
-plot(subgraph_2_top, vertex.size = 10 * sqrt(authority.score(anime_top)$vector), layout=layout.fruchterman.reingold)
-plot(subgraph_3_top, vertex.size = 10 * sqrt(authority.score(anime_top)$vector), layout=layout.fruchterman.reingold)
-plot(subgraph_4_top, vertex.size = 10 * sqrt(authority.score(anime_top)$vector), layout=layout.fruchterman.reingold)
-plot(subgraph_5_top, vertex.size = 10 * sqrt(authority.score(anime_top)$vector), layout=layout.fruchterman.reingold)
-
+plot(
+  subgraph_1_top,
+  vertex.size = 10 * sqrt(authority.score(anime_top)$vector),
+  layout = layout.fruchterman.reingold
+)
+plot(
+  subgraph_2_top,
+  vertex.size = 10 * sqrt(authority.score(anime_top)$vector),
+  layout = layout.fruchterman.reingold
+)
+plot(
+  subgraph_3_top,
+  vertex.size = 10 * sqrt(authority.score(anime_top)$vector),
+  layout = layout.fruchterman.reingold
+)
+plot(
+  subgraph_4_top,
+  vertex.size = 10 * sqrt(authority.score(anime_top)$vector),
+  layout = layout.fruchterman.reingold
+)
+plot(
+  subgraph_5_top,
+  vertex.size = 10 * sqrt(authority.score(anime_top)$vector),
+  layout = layout.fruchterman.reingold
+)
 
 ```
 
@@ -248,7 +326,30 @@ plot(subgraph_5_top, vertex.size = 10 * sqrt(authority.score(anime_top)$vector),
 
 ```{r}
 ## setting the pal
-pal <- c("#db5f57", "#db8557", "#dbaa57", "#dbd057", "#c0db57", "#9bdb57", "#75db57", "#57db5f", "#57db85", "#57dbaa", "#57dbd0", "#57c0db", "#579bdb", "#5775db", "#5f57db", "#8557db", "#aa57db", "#d057db", "#db57c0", "#db579b", "#db5775")
+pal <-
+  c(
+    "#db5f57",
+    "#db8557",
+    "#dbaa57",
+    "#dbd057",
+    "#c0db57",
+    "#9bdb57",
+    "#75db57",
+    "#57db5f",
+    "#57db85",
+    "#57dbaa",
+    "#57dbd0",
+    "#57c0db",
+    "#579bdb",
+    "#5775db",
+    "#5f57db",
+    "#8557db",
+    "#aa57db",
+    "#d057db",
+    "#db57c0",
+    "#db579b",
+    "#db5775"
+  )
 ```
 
 
@@ -406,41 +507,41 @@ ggplot(
     data = filter(sub_2_sankey, x == "to"),
     aes(label = paste0("   ", node), color = node),
     hjust = 0
-  ) 
+  )
 
 
 
 ## Archive for a success version
-  # ggplot(
-  #   Danbooru_sankey,
-  #   aes(
-  #     x = x,
-  #     next_x = next_x,
-  #     node = node,
-  #     next_node = next_node,
-  #     value = value,
-  #     fill = node
-  #   )
-  # ) +
-  # geom_sankey(flow.alpha = 0.6,
-  #             width = 0.01) +
-  # scale_fill_manual(values = pal) +
-  # theme_sankey() +
-  # labs(x = NULL) +
-  # theme(legend.position = "none") +
-  # scale_x_discrete(labels = c("Genre_1", "Genre_2")) +
-  # geom_sankey_text(
-  #   data = filter(Danbooru_sankey, x == "from"),
-  #   aes(label = paste0(node, "   "), color = node),
-  #   hjust = 1
-  # ) +
-  # geom_sankey_text(
-  #   data = filter(Danbooru_sankey, x == "to"),
-  #   aes(label = paste0("   ", node), color = node),
-  #   hjust = 0
-  # ) +
-  # scale_color_manual(values = pal)
- 
+# ggplot(
+#   Danbooru_sankey,
+#   aes(
+#     x = x,
+#     next_x = next_x,
+#     node = node,
+#     next_node = next_node,
+#     value = value,
+#     fill = node
+#   )
+# ) +
+# geom_sankey(flow.alpha = 0.6,
+#             width = 0.01) +
+# scale_fill_manual(values = pal) +
+# theme_sankey() +
+# labs(x = NULL) +
+# theme(legend.position = "none") +
+# scale_x_discrete(labels = c("Genre_1", "Genre_2")) +
+# geom_sankey_text(
+#   data = filter(Danbooru_sankey, x == "from"),
+#   aes(label = paste0(node, "   "), color = node),
+#   hjust = 1
+# ) +
+# geom_sankey_text(
+#   data = filter(Danbooru_sankey, x == "to"),
+#   aes(label = paste0("   ", node), color = node),
+#   hjust = 0
+# ) +
+# scale_color_manual(values = pal)
+
 
 ## Do sankey for subgraph 3
 ggplot(
@@ -470,7 +571,7 @@ ggplot(
     data = filter(sub_3_sankey, x == "to"),
     aes(label = paste0("   ", node), color = node),
     hjust = 0
-  ) 
+  )
 
 
 ```
@@ -526,17 +627,18 @@ ggplot(
 # Do the same to subgraph 2
 chord_Sub_2 <- sub_edge_list_2 %>%
   # filter out the tagme tag
-  filter(!from %in% "tagme",!to %in% "tagme") %>%
+  filter(!from %in% "tagme", !to %in% "tagme") %>%
   group_by(from, to) %>%
   summarize(flowTotal = sum(weight, na.rm = TRUE)) %>%
-  ungroup() 
+  ungroup()
 
 chordDiagram(chord_Sub_2)
 ```
 
 
 ```{r}
-anime_fit <- ergmm(edge_list_df_100_top ~ euclidean(d=2,G=3),family = "Poisson")
+anime_fit <-
+  ergmm(edge_list_df_100_top ~ euclidean(d = 2, G = 3), family = "Poisson")
 plot(anime_fit, pie = TRUE)
 ```
 

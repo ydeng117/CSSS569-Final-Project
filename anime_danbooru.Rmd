@@ -712,11 +712,116 @@ anime_fit <-
 plot(anime_fit, pie = TRUE)
 ```
 
-```{r})
+
+```{r HeatMap for subedgelist_5_top}
+
+sub_edge_list_5_top_expanded <- sub_edge_list_5_top %>%
+  expand(from, to) %>%
+  left_join(sub_edge_list_5_top, by = c("from", "to")) 
+
+sub_edge_list_5_top_matrix <- sub_edge_list_5_top_expanded %>%
+  reshape2::acast(from ~ to,
+                  value.var = "weight",
+                  fill = 0)
+
+sub_edge_list_5_top_matrix_hclust <- 
+  sub_edge_list_5_top_matrix %>%
+  dist() %>%
+  hclust(method = "ward.D")
+
+animeOrder <- sub_edge_list_5_top_matrix_hclust$order
+names(animeOrder) <- sub_edge_list_5_top_matrix_hclust$labels
+print(animeOrder)
+
+animeLevels <- row.names(sub_edge_list_5_top_matrix)[animeOrder]
+print(animeLevels)
+
+sub_edge_list_5_top_expanded_factored <- sub_edge_list_5_top_expanded %>%
+  mutate(
+    from = factor(from, levels = rev(animeLevels)),
+    to = factor(to, levels = animeLevels)
+  )
+
+
+
+
+
+
+ggplot(sub_edge_list_5_top_expanded_factored,
+       aes(y = from, x = to, fill = weight)) +
+  geom_tile(color = "white", size = 0.2) +
+  scale_fill_distiller(palette = "Blues", na.value = "grey90") +
+  coord_equal() +
+  # scale_x_discrete(position = "top") +
+  theme(
+    panel.background = element_blank(),
+    axis.ticks.x = element_blank(),
+    axis.ticks.y = element_blank(),
+    axis.text.x.top = element_text(angle = 45, hjust = 0),
+    legend.key.height = grid::unit(0.8, "cm"),
+    legend.key.width = grid::unit(0.2, "cm"),
+    axis.text.x = element_text(angle = 90, vjust = 0.5)
+  ) +
+  guides(fill = guide_legend(title = "Migration flow")) +
+  labs(y = "Origin", x = "Destination")
+
+
 ```
 
 
 
+```{r try to do on sub-1}
+sub_edge_list_1_top_expanded <- sub_edge_list_1_top %>%
+  expand(from, to) %>%
+  left_join(sub_edge_list_1_top, by = c("from", "to")) 
+
+sub_edge_list_1_top_matrix <- sub_edge_list_1_top_expanded %>%
+  reshape2::acast(from ~ to,
+                  value.var = "weight",
+                  fill = 0)
+
+sub_edge_list_1_top_matrix_hclust <- 
+  sub_edge_list_1_top_matrix %>%
+  dist() %>%
+  hclust(method = "ward.D")
+
+animeOrder <- sub_edge_list_1_top_matrix_hclust$order
+names(animeOrder) <- sub_edge_list_1_top_matrix_hclust$labels
+print(animeOrder)
+
+animeLevels <- row.names(sub_edge_list_1_top_matrix)[animeOrder]
+print(animeLevels)
+
+sub_edge_list_1_top_expanded_factored <- sub_edge_list_1_top_expanded %>%
+  mutate(
+    from = factor(from, levels = rev(animeLevels)),
+    to = factor(to, levels = animeLevels)
+  )
+
+
+
+
+
+
+ggplot(sub_edge_list_1_top_expanded_factored,
+       aes(y = from, x = to, fill = weight)) +
+  geom_tile(color = "white", size = 0.2) +
+  scale_fill_distiller(palette = "Blues", na.value = "grey90") +
+  coord_equal() +
+  # scale_x_discrete(position = "top") +
+  theme(
+    panel.background = element_blank(),
+    axis.ticks.x = element_blank(),
+    axis.ticks.y = element_blank(),
+    axis.text.x.top = element_text(angle = 45, hjust = 0),
+    legend.key.height = grid::unit(0.8, "cm"),
+    legend.key.width = grid::unit(0.2, "cm"),
+    axis.text.x = element_text(angle = 90, vjust = 0.5)
+  ) +
+  guides(fill = guide_legend(title = "Migration flow")) +
+  labs(y = "Origin", x = "Destination")
+
+```
 
 
 

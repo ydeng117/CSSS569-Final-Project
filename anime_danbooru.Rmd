@@ -702,7 +702,13 @@ chord_Sub_2 <- sub_edge_list_2_top %>%
   summarize(flowTotal = sum(weight, na.rm = TRUE)) %>%
   ungroup()
 
-chordDiagram(chord_Sub_2)
+chordDiagram(chord_Sub_2,
+             directional = 1,
+  direction.type = c("arrows", "diffHeight"),
+  link.arr.type = "big.arrow",
+  diffHeight = -0.04,
+  link.sort = TRUE,
+  link.largest.ontop = TRUE)
 ```
 
 
@@ -712,8 +718,6 @@ anime_fit <-
 plot(anime_fit, pie = TRUE)
 ```
 
-```{r})
-```
 
 
 

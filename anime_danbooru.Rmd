@@ -7,7 +7,7 @@ editor_options:
   chunk_output_type: console
 ---
 
-```{r setup, include=FALSE}
+```{r Environment Setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
 library(tm)
 library(stringr)
@@ -33,10 +33,11 @@ library(ggsankey)
 library(RColorBrewer)
 library(latentnet)
 # To set current folder as your working directory.
-setwd(dirname(rstudioapi::getActiveDocumentContext()$path))
+# NO NEED for setwd if you start with RProj.
+# setwd(dirname(rstudioapi::getActiveDocumentContext()$path))
 ```
 
-```{r}
+```{r Import Data}
 # Read the data
 danbooru_in_month <- read.csv("image_in_month.csv")
 
@@ -49,7 +50,7 @@ danbooru_top_rating <- danbooru_in_month %>%
   top_n(1000, score)
 ```
 
-```{r}
+```{r Data Wrangling}
 # clean the tags
 id_tag_list <- danbooru_in_hour %>%
   select(id, tags)
@@ -67,7 +68,7 @@ cleaned_text <-
 id_tag_list$tags <- cleaned_text
 ```
 
-```{r}
+```{r Data Wrangling for the top 1000 score images}
 # text clean for the top 1000 score images
 id_tag_list_top <- danbooru_top_rating %>%
   select(id, tags)
@@ -85,7 +86,7 @@ id_tag_list_top$tags <- cleaned_text_top
 
 
 
-```{r}
+```{r Create the co-occurrence matrix}
 # create occurances matrix
 temp <- crossprod(as.matrix(
   cSplit_e(
@@ -111,7 +112,7 @@ edge_list_df <- melt(temp, na.rm = TRUE) %>%
   select(c("from", "to", "weight"))
 ```
 
-```{r}
+```{r Create the co-occurrence matrix for the top 1000 score images}
 # create co-occurrence matrix for the top 1000 score images
 temp_top <- crossprod(as.matrix(
   cSplit_e(
@@ -139,7 +140,7 @@ edge_list_df_top <- melt(temp_top, na.rm = TRUE) %>%
 
 
 
-```{r}
+```{r Filter the edge list to only include the top 100 most frequent tags}
 # filter the edge list to only include the top 100 most frequent tags
 top_100 <- edge_list_df %>%
   count(from, sort = TRUE) %>% # 对column_name列中的词进行计数并排序
@@ -153,7 +154,7 @@ edge_list_df_100 <- edge_list_df %>%
   filter(to %in% top_100_list)
 ```
 
-```{r}
+```{r Filter the edge list to only include the top 100 most frequent tags for the top 1000 score images}
 # filter the edge list to only include the top 100 most frequent tags for the top 1000 score images
 top_100_top <- edge_list_df_top %>%
   count(from, sort = TRUE) %>% # 对column_name列中的词进行计数并排序
@@ -169,7 +170,7 @@ edge_list_df_100_top <- edge_list_df_top %>%
 ```
 
 
-```{r}
+```{r Create the graph for network analysis}
 # create the graph for network analysis
 anime <- graph_from_data_frame(edge_list_df_100, directed = FALSE)
 l <- layout.kamada.kawai(anime)
@@ -182,7 +183,7 @@ plot(
 )
 ```
 
-```{r}
+```{r Create the graph for network analysis for the top 1000 score images}
 # create the graph for network analysis for the top 1000 score images
 anime_top <-
   graph_from_data_frame(edge_list_df_100_top, directed = FALSE)
@@ -195,7 +196,7 @@ plot(
 ```
 
 
-```{r}
+```{r SBM model for clustering}
 # SBM model for clustering
 ## extraxt the adjacency matrix
 anime.adj <- as_adj(anime, sparse = FALSE)
@@ -250,7 +251,7 @@ plot(
 
 ```
 
-```{r}
+```{r SBM model for clustering for the top 1000 score images}
 # SBM model for clustering for the top 1000 score images
 ## extraxt the adjacency matrix
 anime_top.adj <- as_adj(anime_top, sparse = FALSE)
@@ -327,7 +328,7 @@ plot(
 
 
 
-```{r}
+```{r setting the pal}
 ## setting the pal
 pal <-
   c(
@@ -714,10 +715,17 @@ plot(anime_fit, pie = TRUE)
 
 
 ```{r HeatMap for subedgelist_5_top}
+common_entries <- intersect(unique(sub_edge_list_5_top$from),unique(sub_edge_list_5_top$to))
+
+reverse_edges <- sub_edge_list_5_top %>%
+  select(from = to, to = from, weight)
 
 sub_edge_list_5_top_expanded <- sub_edge_list_5_top %>%
   expand(from, to) %>%
-  left_join(sub_edge_list_5_top, by = c("from", "to")) 
+  left_join(sub_edge_list_5_top, by = c("from", "to"))  %>% 
+  filter(from %in% common_entries & to %in% common_entries) %>% 
+  bind_rows(., reverse_edges)
+  
 
 sub_edge_list_5_top_matrix <- sub_edge_list_5_top_expanded %>%
   reshape2::acast(from ~ to,
@@ -750,7 +758,7 @@ sub_edge_list_5_top_expanded_factored <- sub_edge_list_5_top_expanded %>%
 ggplot(sub_edge_list_5_top_expanded_factored,
        aes(y = from, x = to, fill = weight)) +
   geom_tile(color = "white", size = 0.2) +
-  scale_fill_distiller(palette = "Blues", na.value = "grey90") +
+  scale_fill_distiller(palette = "Blues",direction = 1, na.value = "grey90") +
   coord_equal() +
   # scale_x_discrete(position = "top") +
   theme(
@@ -771,20 +779,36 @@ ggplot(sub_edge_list_5_top_expanded_factored,
 
 
 ```{r try to do on sub-1}
+common_entries <- intersect(unique(sub_edge_list_1_top$from),unique(sub_edge_list_1_top$to))
+
+reverse_edges <- sub_edge_list_1_top %>%
+  filter(from %in% common_entries & to %in% common_entries) %>% 
+  select(from = to, to = from, weight)
+
+
 sub_edge_list_1_top_expanded <- sub_edge_list_1_top %>%
   expand(from, to) %>%
-  left_join(sub_edge_list_1_top, by = c("from", "to")) 
+  left_join(sub_edge_list_1_top, by = c("from", "to")) %>% 
+  filter(from %in% common_entries & to %in% common_entries)%>% 
+  bind_rows(., reverse_edges)
+
+# 创建一个sub_edge_list_1_top$from和sub_edge_list_1_top$to的交集
+# 用这个交集来筛选出sub_edge_list_1_top_expanded中的from和to
+
+
 
 sub_edge_list_1_top_matrix <- sub_edge_list_1_top_expanded %>%
   reshape2::acast(from ~ to,
                   value.var = "weight",
                   fill = 0)
 
+# ward.D 可以 最小化每次合并后产生的总内部平方和
 sub_edge_list_1_top_matrix_hclust <- 
   sub_edge_list_1_top_matrix %>%
   dist() %>%
   hclust(method = "ward.D")
 
+# order the anime
 animeOrder <- sub_edge_list_1_top_matrix_hclust$order
 names(animeOrder) <- sub_edge_list_1_top_matrix_hclust$labels
 print(animeOrder)
@@ -792,21 +816,16 @@ print(animeOrder)
 animeLevels <- row.names(sub_edge_list_1_top_matrix)[animeOrder]
 print(animeLevels)
 
-sub_edge_list_1_top_expanded_factored <- sub_edge_list_1_top_expanded %>%
-  mutate(
-    from = factor(from, levels = rev(animeLevels)),
-    to = factor(to, levels = animeLevels)
-  )
 
-
-
-
-
+sub_edge_list_1_top_expanded_factored <-
+  sub_edge_list_1_top_expanded %>%
+  mutate(from = factor(from, levels = rev(animeLevels)),
+         to = factor(to, levels = animeLevels))
 
 ggplot(sub_edge_list_1_top_expanded_factored,
        aes(y = from, x = to, fill = weight)) +
   geom_tile(color = "white", size = 0.2) +
-  scale_fill_distiller(palette = "Blues", na.value = "grey90") +
+  scale_fill_distiller(palette = "Blues", direction = 1, na.value = "grey90") +
   coord_equal() +
   # scale_x_discrete(position = "top") +
   theme(
@@ -818,11 +837,85 @@ ggplot(sub_edge_list_1_top_expanded_factored,
     legend.key.width = grid::unit(0.2, "cm"),
     axis.text.x = element_text(angle = 90, vjust = 0.5)
   ) +
-  guides(fill = guide_legend(title = "Migration flow")) +
+  guides(fill = guide_legend(title = "Tag connection")) +
   labs(y = "Origin", x = "Destination")
 
 ```
 
 
+```{r}
+# Check if sub_edge_list_1_top_expanded$to has any NA
+sub_edge_list_1_top_expanded %>%
+  filter(is.na(to))
 
+filtered_data <- sub_edge_list_1_top_expanded %>%
+  filter((!is.na(from) | !is.na(to)) & !is.na(weight))
+
+
+```
+
+
+
+```{r}
+common_entries <- intersect(unique(sub_edge_list_4_top$from),unique(sub_edge_list_4_top$to))
+
+reverse_edges <- sub_edge_list_4_top %>%
+  filter(from %in% common_entries & to %in% common_entries) %>% 
+  select(from = to, to = from, weight)
+
+
+sub_edge_list_4_top_expanded <- sub_edge_list_4_top %>%
+  expand(from, to) %>%
+  left_join(sub_edge_list_4_top, by = c("from", "to")) %>% 
+  filter(from %in% common_entries & to %in% common_entries)%>% 
+  bind_rows(., reverse_edges)
+
+# 创建一个sub_edge_list_4_top$from和sub_edge_list_4_top$to的交集
+# 用这个交集来筛选出sub_edge_list_4_top_expanded中的from和to
+
+
+
+sub_edge_list_4_top_matrix <- sub_edge_list_4_top_expanded %>%
+  reshape2::acast(from ~ to,
+                  value.var = "weight",
+                  fill = 0)
+
+# ward.D 可以 最小化每次合并后产生的总内部平方和
+sub_edge_list_4_top_matrix_hclust <- 
+  sub_edge_list_4_top_matrix %>%
+  dist() %>%
+  hclust(method = "ward.D")
+
+# order the anime
+animeOrder <- sub_edge_list_4_top_matrix_hclust$order
+names(animeOrder) <- sub_edge_list_4_top_matrix_hclust$labels
+print(animeOrder)
+
+animeLevels <- row.names(sub_edge_list_4_top_matrix)[animeOrder]
+print(animeLevels)
+
+
+sub_edge_list_4_top_expanded_factored <-
+  sub_edge_list_4_top_expanded %>%
+  mutate(from = factor(from, levels = rev(animeLevels)),
+         to = factor(to, levels = animeLevels))
+
+ggplot(sub_edge_list_4_top_expanded_factored,
+       aes(y = from, x = to, fill = weight)) +
+  geom_tile(color = "white", size = 0.2) +
+  scale_fill_distiller(palette = "Blues", direction = 1, na.value = "grey90") +
+  coord_equal() +
+  # scale_x_discrete(position = "top") +
+  theme(
+    panel.background = element_blank(),
+    axis.ticks.x = element_blank(),
+    axis.ticks.y = element_blank(),
+    axis.text.x.top = element_text(angle = 45, hjust = 0),
+    legend.key.height = grid::unit(0.8, "cm"),
+    legend.key.width = grid::unit(0.2, "cm"),
+    axis.text.x = element_text(angle = 90, vjust = 0.5)
+  ) +
+  guides(fill = guide_legend(title = "Tag connection")) +
+  labs(y = "Origin", x = "Destination")
+```
 

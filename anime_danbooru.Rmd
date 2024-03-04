@@ -919,3 +919,14 @@ ggplot(sub_edge_list_4_top_expanded_factored,
   labs(y = "Origin", x = "Destination")
 ```
 
+```{r}
+chord_Sub_4 <- sub_edge_list_4_top %>%
+  # filter out the tagme tag
+  filter(!from %in% "tagme", !to %in% "tagme") %>%
+  group_by(from, to) %>%
+  summarize(flowTotal = sum(weight, na.rm = TRUE)) %>%
+  ungroup()
+
+chordDiagram(chord_Sub_4)
+```
+

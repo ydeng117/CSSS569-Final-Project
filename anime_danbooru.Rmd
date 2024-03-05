@@ -34,7 +34,7 @@ library(RColorBrewer)
 library(latentnet)
 # To set current folder as your working directory.
 # NO NEED for setwd if you start with RProj.
-# setwd(dirname(rstudioapi::getActiveDocumentContext()$path))
+setwd(dirname(rstudioapi::getActiveDocumentContext()$path))
 ```
 
 ```{r Import Data}
@@ -719,8 +719,7 @@ anime_fit <-
 plot(anime_fit, pie = TRUE)
 ```
 
-<<<<<<< HEAD
-=======
+
 
 ```{r HeatMap for subedgelist_5_top}
 common_entries <- intersect(unique(sub_edge_list_5_top$from),unique(sub_edge_list_5_top$to))
@@ -783,7 +782,7 @@ ggplot(sub_edge_list_5_top_expanded_factored,
 
 
 ```
->>>>>>> 74bded1e50629a8012ae72aba11fe6091c40d7a1
+
 
 
 
@@ -936,6 +935,9 @@ chord_Sub_4 <- sub_edge_list_4_top %>%
   summarize(flowTotal = sum(weight, na.rm = TRUE)) %>%
   ungroup()
 
-chordDiagram(chord_Sub_4)
+chordDiagram(chord_Sub_4,
+  diffHeight = -0.04,
+  link.sort = TRUE,
+  link.largest.ontop = TRUE)
 ```
 
